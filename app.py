@@ -13,7 +13,7 @@ import streamlit as st
 BASE_DIR = Path(__file__).parent
 MODEL_PATH = BASE_DIR / "best_lightgbm_regressor.pkl"
 SCALER_PATH = BASE_DIR / "scaler_advanced.pkl"
-DATA_PATH = BASE_DIR / "cutoffs.csv"
+DATA_PATH = BASE_DIR / "cutoffs_app.csv.gz"  # slim, compressed copy of cutoffs.csv
 ENCODINGS_PATH = BASE_DIR / "encodings.json"  # optional, see README
 
 # Order must match the scaler / model training order
@@ -21,7 +21,7 @@ FEATURES = ["year_numeric", "source_page", "univ_target_enc", "page_target_enc"]
 YEARS = [2024, 2025, 2026]
 CSV_COLS = [
     "university_id", "university", "year", "programme_id", "programme",
-    "category", "figure", "figure_kind", "source_page",
+    "category", "figure", "source_page",
 ]
 
 CSS = """
@@ -64,9 +64,7 @@ def load_artifacts():
 @st.cache_data(show_spinner="Loading cutoff data…")
 def load_data():
     df = pd.read_csv(DATA_PATH, usecols=CSV_COLS)
-    df = df[
-        (df["figure_kind"] == "score") & df["figure"].notna() & df["source_page"].notna()
-    ].copy()
+    df = df[df["figure"].notna() & df["source_page"].notna()].copy()
     df["source_page"] = df["source_page"].astype(int)
 
     univ_enc = df.groupby("university_id")["figure"].mean().to_dict()
@@ -126,7 +124,7 @@ def main():
         st.error(f"Could not load the app files: {e}")
         st.info(
             "Make sure `best_lightgbm_regressor.pkl`, `scaler_advanced.pkl` and "
-            "`cutoffs.csv` are in the same folder as `app.py`."
+            "`cutoffs_app.csv.gz` are in the same folder as `app.py`."
         )
         st.stop()
 
@@ -347,8 +345,7 @@ def main():
             **Good to know**
             - The model does not take category (UR, OBC, SC, ST…) or counselling round
               as inputs, so the estimate is a general level for the programme.
-            - Scores are only available where the source lists a score; rank-based
-              lists are excluded.
+            - Only score-based cutoffs are included; rank-based lists are excluded.
             - Treat results as a guide, not an official figure.
             """
         )
@@ -356,7 +353,7 @@ def main():
             st.success("Using target encodings from `encodings.json`.")
         else:
             st.warning(
-                "Target encodings are computed from `cutoffs.csv`. For results that "
+                "Target encodings are computed from the cutoff data. For results that "
                 "exactly match training, add the `encodings.json` saved from your "
                 "training notebook."
             )
